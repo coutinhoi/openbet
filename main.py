@@ -1,3 +1,6 @@
+# Sistema básico de apostas P2P com moeda fictícia "hamburguinho"
+# Stack: Streamlit + Supabase
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -14,6 +17,10 @@ st.title("🏆 OpenBet - Apostas em Hamburguinhos")
 # --- Login (seleção de usuário) ---
 usuarios_data = supabase.table("usuarios").select("id, nome, saldo").execute()
 usuarios_df = pd.DataFrame(usuarios_data.data)
+
+if usuarios_df.empty:
+    st.error("Nenhum usuário cadastrado. Por favor, insira registros na tabela 'usuarios'.")
+    st.stop()
 
 usuario_nome = st.selectbox("Escolha seu nome", usuarios_df["nome"])
 usuario_row = usuarios_df[usuarios_df["nome"] == usuario_nome].iloc[0]
@@ -66,6 +73,8 @@ if len(df_apostas):
                     }).eq("id", row["id"]).execute()
                     supabase.table("usuarios").update({"saldo": saldo_usuario - row["valor"]}).eq("id", usuario_id).execute()
                     st.success("Aposta aceita!")
+else:
+    st.info("Nenhuma aposta aberta disponível.")
 
 # --- Finalização admin ---
 st.subheader("Finalizar Aposta (admin)")
@@ -78,8 +87,8 @@ for i, row in df_pendentes.iterrows():
         if st.button(f"Finalizar aposta {i}"):
             ganhador_id = row["id_usuario"] if vencedor == "criador" else row["id_oponente"]
             premio = 2 * row["valor"]
-            saldo_antigo = supabase.table("usuarios").select("saldo").eq("id", ganhador_id).execute().data[0]["saldo"]
-            supabase.table("usuarios").update({"saldo": saldo_antigo + premio}).eq("id", ganhador_id).execute()
+            saldo_atual = supabase.table("usuarios").select("saldo").eq("id", ganhador_id).execute().data[0]["saldo"]
+            supabase.table("usuarios").update({"saldo": saldo_atual + premio}).eq("id", ganhador_id).execute()
             supabase.table("apostas").update({
                 "status": "finalizada",
                 "resultado": vencedor
